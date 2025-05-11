@@ -1,84 +1,65 @@
 package controllers
 
 import (
-	"gin/cmd/services"
 	"net/http"
 	"strconv"
+
+	"gin/cmd/services"
 
 	"github.com/gin-gonic/gin"
 )
 
 type UserController struct {
-	userService *services.UserService
+	service *services.UserService
 }
 
-func NewUserController(userService *services.UserService) *UserController {
-	return &UserController{
-		userService: userService,
-	}
+func NewUserController(s *services.UserService) *UserController {
+	return &UserController{service: s}
 }
 
-func (s *UserController) GetUsers(c *gin.Context) {
-	users := s.userService.GetUsers()
-	c.JSON(http.StatusOK, users)
+func (ctl *UserController) GetUsers(c *gin.Context) {
+	users := ctl.service.GetUsers()
+	c.JSON(http.StatusOK, gin.H{"users": users})
 }
 
-func (s *UserController) CreateUser(c *gin.Context) {
-	var user services.User
-	if err := c.ShouldBindJSON(&user); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"message": "invalid request body",
-		})
+func (ctl *UserController) CreateUser(c *gin.Context) {
+	var input services.User
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	createdUser := s.userService.CreateUser(user)
-	c.JSON(http.StatusOK, createdUser)
+	created := ctl.service.CreateUser(input)
+	c.JSON(http.StatusCreated, gin.H{"user": created})
 }
 
-func (s *UserController) UpdateUser(c *gin.Context) {
-	idStr := c.Param("id")
-	id, err := strconv.Atoi(idStr)
+func (ctl *UserController) UpdateUser(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"message": "invalid user ID",
-		})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
 		return
 	}
-	var user services.User
-	if err := c.ShouldBindJSON(&user); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"message": "invalid request body",
-		})
+	var input services.User
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	updatedUser, err := s.userService.UpdateUser(id, user)
+	updated, err := ctl.service.UpdateUser(id, input)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"message": "user not found",
-		})
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, updatedUser)
+	c.JSON(http.StatusOK, gin.H{"user": updated})
 }
 
-func (s *UserController) DeleteUser(c *gin.Context) {
-	idStr := c.Param("id")
-	id, err := strconv.Atoi(idStr)
+func (ctl *UserController) DeleteUser(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"message": "invalid user ID",
-		})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
 		return
 	}
-	err = s.userService.DeleteUser(id)
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"message": "user not found",
-		})
+	if err := ctl.service.DeleteUser(id); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{
-		"message": "user deleted",
-		"id":      id,
-	})
+	c.JSON(http.StatusOK, gin.H{"deleted": id})
 }

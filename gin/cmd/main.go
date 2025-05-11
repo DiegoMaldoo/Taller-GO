@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"gin/cmd/middleware"
 	"gin/cmd/routes"
+	"gin/cmd/services"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -10,13 +12,23 @@ import (
 
 func main() {
 	r := gin.Default()
+
+	// middleware global
+	r.Use(middleware.LoggerMiddleware())
+
+	// creamos una sola instancia de UserService
+	userService := services.NewUserService()
+
+	// ruta de prueba
 	r.GET("/ping", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"message": "pong",
 			"status":  "ok",
 		})
 	})
-	routes.SetupUserRoutes(r)
-	r.Run(":3000") // listen and serve on 0.0.0.0:8080 (for windows "localhost:8080")
+
+	routes.SetupUserRoutes(r, userService)
+
 	fmt.Println("Listening at port 3000")
+	r.Run(":3000")
 }
